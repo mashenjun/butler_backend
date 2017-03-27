@@ -39,22 +39,19 @@ class receiptCreateView(generics.CreateAPIView):
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data,)
+
         try:
             serializer.is_valid(raise_exception=True)
             superMarket = serializer.validated_data.get('superMarket')
             img = serializer.validated_data.get('picFile')
-            picFile = (img.name, img, 'image/jpeg')
+            picFile = (img.name, img, img.content_type)
             files = {'picFile': picFile}
             response = requests.post(OCR_HOST, data=[('key', OCR_KEY), ('superMarket', superMarket)], files=files)
-
-            # logger.debug(img.content_type)
-
             return Response(response.json(), status=response.status_code)
-        except :
+        except ValidationError as e:
             # for key in serializer.errors:
             #     print("key: %s , value: %s" % (key, serializer.errors[key][0]))
             errorsmessage = {k:serializer.errors[k][0] for k in serializer.errors}
-            logger.debug(errorsmessage)
             response_data_fail = {
                 'errormessage': errorsmessage
             }
