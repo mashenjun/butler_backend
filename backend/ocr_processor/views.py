@@ -1,11 +1,7 @@
 
 import requests
 import base64
-import mimetypes
-import urllib.request
-import urllib.parse
-import urllib.error
-import time
+from rest_framework.validators import UniqueValidator
 
 from rest_framework import generics,views
 from rest_framework.decorators import api_view, permission_classes
@@ -13,6 +9,7 @@ from rest_framework.parsers import FileUploadParser,MultiPartParser
 from rest_framework.response import Response
 from rest_framework.settings import api_settings
 from rest_framework import status
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import (
     AllowAny,
     IsAuthenticated,
@@ -42,22 +39,27 @@ class receiptCreateView(generics.CreateAPIView):
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data,)
-        logger.debug(request.data)
         try:
-            serializer.is_valid()
+            serializer.is_valid(raise_exception=True)
             superMarket = serializer.validated_data.get('superMarket')
             img = serializer.validated_data.get('picFile')
             picFile = (img.name, img, 'image/jpeg')
             files = {'picFile': picFile}
             response = requests.post(OCR_HOST, data=[('key', OCR_KEY), ('superMarket', superMarket)], files=files)
-            return Response(response.text, status=response.status_code)
-        except:
-            pass
-        errors = serializer.errors
-        response_data_fail = {
-            'errormessage': errors
-        }
-        return Response(response_data_fail, status=status.HTTP_400_BAD_REQUEST)
+
+            # logger.debug(img.content_type)
+
+            return Response(response.json(), status=response.status_code)
+        except :
+            # for key in serializer.errors:
+            #     print("key: %s , value: %s" % (key, serializer.errors[key][0]))
+            errorsmessage = {k:serializer.errors[k][0] for k in serializer.errors}
+            logger.debug(errorsmessage)
+            response_data_fail = {
+                'errormessage': errorsmessage
+            }
+            return Response(response_data_fail, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 @api_view(['GET','POST'])
