@@ -21,6 +21,7 @@ from backend.config import (
     OCR_HOST,
     OCR_KEY,
     DEBUG_URL,
+    FAKE_IMG_URL,
 )
 
 from .serializers import receiptSerializer
@@ -47,7 +48,13 @@ class receiptCreateView(generics.CreateAPIView):
             picFile = (img.name, img, img.content_type)
             files = {'picFile': picFile}
             response = requests.post(OCR_HOST, data=[('key', OCR_KEY), ('superMarket', superMarket)], files=files)
-            return Response(response.json(), status=response.status_code)
+            result = {
+                "pic_url":FAKE_IMG_URL,
+                "result":response.json()
+            }
+            return Response(result, status=response.status_code)
+
+
         except ValidationError as e:
             # for key in serializer.errors:
             #     print("key: %s , value: %s" % (key, serializer.errors[key][0]))
