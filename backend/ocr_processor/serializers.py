@@ -1,5 +1,9 @@
 from rest_framework import serializers
 from ocr_processor.utils import createLogger
+from .models import (
+    Person,
+    ProcessedReceipt,
+)
 
 logger = createLogger(__name__);
 
@@ -17,5 +21,17 @@ class receiptSerializer(serializers.Serializer):
             raise serializers.ValidationError("The uploaded image should be image/jpg")
         return value
 
+class processedReceiptSerializer(serializers.ModelSerializer):
 
+    class Meta:
+        model = ProcessedReceipt
+        fields = '__all__'
+
+
+
+class PersonCreateSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Person
+        fields = '__all__'
 

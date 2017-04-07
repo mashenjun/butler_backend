@@ -17,13 +17,18 @@ from django.conf.urls import url, include
 from django.contrib import admin
 
 from rest_framework import routers
+from rest_framework_swagger.views import get_swagger_view
 
 router = routers.DefaultRouter()
-
+schema_view = get_swagger_view(title='Pastebin API')
 
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^', include(router.urls)),
     url(r'^ocr_processor/', include('ocr_processor.urls')),
+]
+
+urlpatterns += [
+    url(r'^api-docs/', schema_view)
 ]

@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # libs
     'rest_framework',
+    'rest_framework_swagger',
     # apps
     'ocr_processor',
 ]
