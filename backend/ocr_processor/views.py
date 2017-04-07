@@ -56,7 +56,7 @@ logger = createLogger(__name__);
 def sendtoOCR(data):
     # the data is just a response data
     superMarket = data.get('superMarket')
-    img = data.copy().get('picFile')
+    img = data.get('picFile')
     picFile = (img.name, img, img.content_type)
     files = {'picFile': picFile}
     response = requests.post(OCR_HOST, data=[('key', OCR_KEY), ('superMarket', superMarket)], files=files)
@@ -98,8 +98,8 @@ class receiptCreateView(generics.CreateAPIView):
             # picFile = (img.name, img, img.content_type)
             # files = {'picFile': picFile}
             # use thread to send to OCR
-            pool = ThreadPool(processes=1)
-            async_result = pool.apply_async(sendtoOCR, args = (serializer.validated_data, ))
+            # pool = ThreadPool(processes=1)
+            # async_result = pool.apply_async(sendtoOCR, args = (serializer.validated_data.copy(), ))
             # response = requests.post(OCR_HOST, data=[('key', OCR_KEY), ('superMarket', superMarket)], files=files)
             # use thread to upload image to S3
             s3_filename = os.path.join(superMarket, '{}_{}.{}'.format(uuid.uuid4().hex,'0','jpg'))
@@ -108,16 +108,15 @@ class receiptCreateView(generics.CreateAPIView):
             # bucket.put_object(ACL='public-read',Body=img)
             # bucket.upload_fileobj(img, s3_filename, ExtraArgs={'ACL':'public-read','ContentType':'image/jpeg'})
             bucket_location = s3.get_bucket_location(Bucket=BUCKET_NAME)
-            # url = '{}/{}/{}'.format(s3.meta.endpoint_url, BUCKET_NAME, s3_filename)
             url = "https://s3-{0}.amazonaws.com/{1}/{2}".format(
                 bucket_location['LocationConstraint'],
                 BUCKET_NAME,
                 s3_filename)
-            processedResult = async_result.get()
-            if(len(processedResult.text)==0):
-                processedResult_json = {}
-            else:
-                processedResult_json = processedResult.json()
+            # processedResult = async_result.get()
+            # if(len(processedResult.content)==0):
+            #     processedResult_json = {}
+            # else:
+            #     processedResult_json = processedResult.json()
             # TODO do correction
 
             # with connection.cursor() as cursor:
@@ -140,9 +139,9 @@ class receiptCreateView(generics.CreateAPIView):
 
             result = {
                 "pic_url":url,
-                "result":processedResult_json
+                "result":{}
             }
-            return Response(result, status=processedResult.status_code)
+            return Response(result, )
 
         except ValidationError as e:
             # for key in serializer.errors:
