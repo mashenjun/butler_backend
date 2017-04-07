@@ -19,11 +19,12 @@ from rest_framework.permissions import (
 
 
 from django.db import connection
+from django.core.files.base import ContentFile
 
 
 import boto3
 from botocore.config import Config
-
+from PIL import Image
 
 from .models import (
     Person,
@@ -94,16 +95,18 @@ class receiptCreateView(generics.CreateAPIView):
         try:
             serializer.is_valid(raise_exception=True)
             superMarket = serializer.validated_data.get('superMarket').lower()
-            img = serializer.validated_data.copy().get('picFile')
+            # img = serializer.validated_data.get('picFile')
+            # img = Image.Image.copy(serializer.validated_data.get('picFile'))
+            img = ContentFile(serializer.validated_data.get('picFile').read())
             # picFile = (img.name, img, img.content_type)
             # files = {'picFile': picFile}
             # use thread to send to OCR
-            # pool = ThreadPool(processes=1)
-            # async_result = pool.apply_async(sendtoOCR, args = (serializer.validated_data.copy(), ))
+            serializer.validated_data.get('picFile').seek(0)
+            pool = ThreadPool(processes=1)
+            async_result = pool.apply_async(sendtoOCR, args = (serializer.validated_data, ))
             # response = requests.post(OCR_HOST, data=[('key', OCR_KEY), ('superMarket', superMarket)], files=files)
             # use thread to upload image to S3
             s3_filename = os.path.join(superMarket, '{}_{}.{}'.format(uuid.uuid4().hex,'0','jpg'))
-            img.seek(0)
             s3.upload_fileobj(img, BUCKET_NAME, s3_filename, ExtraArgs={'ACL':'public-read','ContentType':'image/jpeg'})
             # bucket.put_object(ACL='public-read',Body=img)
             # bucket.upload_fileobj(img, s3_filename, ExtraArgs={'ACL':'public-read','ContentType':'image/jpeg'})
@@ -112,11 +115,12 @@ class receiptCreateView(generics.CreateAPIView):
                 bucket_location['LocationConstraint'],
                 BUCKET_NAME,
                 s3_filename)
-            # processedResult = async_result.get()
-            # if(len(processedResult.content)==0):
-            #     processedResult_json = {}
-            # else:
-            #     processedResult_json = processedResult.json()
+            processedResult = async_result.get()
+
+            if(len(processedResult.content)==0):
+                processedResult_json = {}
+            else:
+                processedResult_json = processedResult.json()
             # TODO do correction
 
             # with connection.cursor() as cursor:
@@ -139,9 +143,9 @@ class receiptCreateView(generics.CreateAPIView):
 
             result = {
                 "pic_url":url,
-                "result":{}
+                "result":processedResult_json
             }
-            return Response(result, )
+            return Response(result,status = processedResult.status_code )
 
         except ValidationError as e:
             # for key in serializer.errors:
