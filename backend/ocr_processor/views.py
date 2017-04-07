@@ -88,7 +88,7 @@ class receiptCreateView(generics.CreateAPIView):
             # response = requests.post(OCR_HOST, data=[('key', OCR_KEY), ('superMarket', superMarket)], files=files)
             # use thread to upload image to S3
             s3_filename = os.path.join(superMarket, '{}_{}.{}'.format(uuid.uuid4().hex,'0','jpg'))
-            s3.upload_fileobj(img, BUCKET_NAME, s3_filename, ExtraArgs={'ACL':'public-read','ContentType':'image/jpeg'})
+            s3.upload_fileobj(serializer.validated_data.get('picFile'), BUCKET_NAME, s3_filename, ExtraArgs={'ACL':'public-read','ContentType':'image/jpeg'})
             # bucket.put_object(ACL='public-read',Body=img)
             # bucket.upload_fileobj(img, s3_filename, ExtraArgs={'ACL':'public-read','ContentType':'image/jpeg'})
             bucket_location = s3.get_bucket_location(Bucket=BUCKET_NAME)
