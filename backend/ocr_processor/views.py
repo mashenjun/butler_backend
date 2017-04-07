@@ -62,6 +62,21 @@ def sendtoOCR(data):
     response = requests.post(OCR_HOST, data=[('key', OCR_KEY), ('superMarket', superMarket)], files=files)
     return response
 
+def sendtoS3(data):
+    superMarket = data.get('superMarket').lower()
+    s3 = boto3.client('s3', config=Config(signature_version='s3v4'))
+    s3_filename = os.path.join(superMarket, '{}_{}.{}'.format(uuid.uuid4().hex, '0', 'jpg'))
+    s3.upload_fileobj(data.get('picFile'), BUCKET_NAME, s3_filename,
+                      ExtraArgs={'ACL': 'public-read', 'ContentType': 'image/jpeg'})
+    bucket_location = s3.get_bucket_location(Bucket=BUCKET_NAME)
+    url = "https://s3-{0}.amazonaws.com/{1}/{2}".format(
+        bucket_location['LocationConstraint'],
+        BUCKET_NAME,
+        s3_filename)
+
+    return url
+
+
 class receiptCreateView(generics.CreateAPIView):
     """
     Returns a processed OCR result in json format for the given image.
@@ -88,7 +103,8 @@ class receiptCreateView(generics.CreateAPIView):
             # response = requests.post(OCR_HOST, data=[('key', OCR_KEY), ('superMarket', superMarket)], files=files)
             # use thread to upload image to S3
             s3_filename = os.path.join(superMarket, '{}_{}.{}'.format(uuid.uuid4().hex,'0','jpg'))
-            s3.upload_fileobj(serializer.validated_data.get('picFile'), BUCKET_NAME, s3_filename, ExtraArgs={'ACL':'public-read','ContentType':'image/jpeg'})
+            img.seek(0)
+            s3.upload_fileobj(img, BUCKET_NAME, s3_filename, ExtraArgs={'ACL':'public-read','ContentType':'image/jpeg'})
             # bucket.put_object(ACL='public-read',Body=img)
             # bucket.upload_fileobj(img, s3_filename, ExtraArgs={'ACL':'public-read','ContentType':'image/jpeg'})
             bucket_location = s3.get_bucket_location(Bucket=BUCKET_NAME)
