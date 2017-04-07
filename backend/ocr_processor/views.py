@@ -56,7 +56,7 @@ logger = createLogger(__name__);
 def sendtoOCR(data):
     # the data is just a response data
     superMarket = data.get('superMarket')
-    img = data.get('picFile')
+    img = data.copy().get('picFile')
     picFile = (img.name, img, img.content_type)
     files = {'picFile': picFile}
     response = requests.post(OCR_HOST, data=[('key', OCR_KEY), ('superMarket', superMarket)], files=files)
@@ -80,17 +80,15 @@ class receiptCreateView(generics.CreateAPIView):
             serializer.is_valid(raise_exception=True)
             superMarket = serializer.validated_data.get('superMarket').lower()
             img = serializer.validated_data.copy().get('picFile')
-            picFile = (img.name, img, img.content_type)
-            files = {'picFile': picFile}
+            # picFile = (img.name, img, img.content_type)
+            # files = {'picFile': picFile}
             # use thread to send to OCR
             pool = ThreadPool(processes=1)
             async_result = pool.apply_async(sendtoOCR, args = (serializer.validated_data, ))
             # response = requests.post(OCR_HOST, data=[('key', OCR_KEY), ('superMarket', superMarket)], files=files)
             # use thread to upload image to S3
             s3_filename = os.path.join(superMarket, '{}_{}.{}'.format(uuid.uuid4().hex,'0','jpg'))
-            with open('test.jpg','rb') as img:
-                res = s3.upload_fileobj(img, BUCKET_NAME, s3_filename, ExtraArgs={'ACL':'public-read','ContentType':'image/jpeg'})
-            logger.debug(res)
+            s3.upload_fileobj(img, BUCKET_NAME, s3_filename, ExtraArgs={'ACL':'public-read','ContentType':'image/jpeg'})
             # bucket.put_object(ACL='public-read',Body=img)
             # bucket.upload_fileobj(img, s3_filename, ExtraArgs={'ACL':'public-read','ContentType':'image/jpeg'})
             bucket_location = s3.get_bucket_location(Bucket=BUCKET_NAME)
