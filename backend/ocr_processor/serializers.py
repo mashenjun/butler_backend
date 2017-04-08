@@ -22,6 +22,7 @@ class receiptSerializer(serializers.Serializer):
         return value
 
 class processedReceiptSerializer(serializers.ModelSerializer):
+    processedResult = serializers.JSONField()
 
     class Meta:
         model = ProcessedReceipt

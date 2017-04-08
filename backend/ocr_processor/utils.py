@@ -9,6 +9,8 @@ def createLogger(name):
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
 
+    file_handler = logging.FileHandler('../logs/django_butler.log')
+
     # create formatter
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
@@ -17,6 +19,7 @@ def createLogger(name):
 
     # add ch to logger
     logger.addHandler(ch)
+    logger.addHandler(file_handler)
     return logger
 
 def ocr_space_file(file_obj, overlay=False, api_key='cfe3addbc288957', language='ger'):
