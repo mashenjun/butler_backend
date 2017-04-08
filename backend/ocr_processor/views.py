@@ -167,6 +167,10 @@ class processedReceiptCreateView(generics.ListCreateAPIView):
     permission_classes = [AllowAny]
     queryset = ProcessedReceipt.objects.all()
 
+    def post(self, request, *args, **kwargs):
+        logger.debug(request.data)
+        return self.create(request, *args, **kwargs)
+
 
 @api_view(['GET','POST'])
 @permission_classes([AllowAny])
