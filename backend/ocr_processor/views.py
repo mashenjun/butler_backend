@@ -54,10 +54,11 @@ import Levenshtein
 # Create your views here.
 logger = createLogger(__name__);
 
-def sendtoOCR(data):
+def sendtoOCR(superMarket,img):
     # the data is just a response data
-    superMarket = data.get('superMarket')
-    img = data.get('picFile')
+    superMarket = superMarket
+    # superMarket = data.get('superMarket')
+    # img = data.get('picFile')
     picFile = (img.name, img, img.content_type)
     files = {'picFile': picFile}
     response = requests.post(OCR_HOST, data=[('key', OCR_KEY), ('superMarket', superMarket)], files=files)
@@ -67,8 +68,9 @@ def sendtoS3(supermarket,img):
     superMarket = supermarket
     s3 = boto3.client('s3', config=Config(signature_version='s3v4'))
     s3_filename = os.path.join(superMarket, '{}_{}.{}'.format(uuid.uuid4().hex, '0', 'jpg'))
-    s3.upload_fileobj(img, BUCKET_NAME, s3_filename,
-                      ExtraArgs={'ACL': 'public-read', 'ContentType': 'image/jpeg'})
+    # s3.upload_fileobj(img, BUCKET_NAME, s3_filename,
+    #                   ExtraArgs={'ACL': 'public-read', 'ContentType': 'image/jpeg'})
+    s3.put_object(ACL='public-read',Body = img,ContentType = "image/jpeg",Bucket = BUCKET_NAME,Key = s3_filename)
     bucket_location = s3.get_bucket_location(Bucket=BUCKET_NAME)
     url = "https://s3-{0}.amazonaws.com/{1}/{2}".format(
         bucket_location['LocationConstraint'],
@@ -87,7 +89,6 @@ class receiptCreateView(generics.CreateAPIView):
     parser_classes = (MultiPartParser,JSONParser)
 
     def post(self, request, *args, **kwargs):
-        s3 = boto3.client('s3', config=Config(signature_version='s3v4'))
         # s3 = boto3.resource('s3', config=Config(signature_version='s3v4'))
         # bucket = s3.Bucket(BUCKET_NAME)
         serializer = self.get_serializer(data=request.data,)
@@ -95,15 +96,16 @@ class receiptCreateView(generics.CreateAPIView):
         try:
             serializer.is_valid(raise_exception=True)
             superMarket = serializer.validated_data.get('superMarket').lower()
-            # img = serializer.validated_data.get('picFile')
-            # img = Image.Image.copy(serializer.validated_data.get('picFile'))
-            img = ContentFile(serializer.validated_data.get('picFile').read())
+            img = serializer.validated_data.get('picFile')
+            # img = ContentFile(serializer.validated_data.get('picFile').read())
             # picFile = (img.name, img, img.content_type)
             # files = {'picFile': picFile}
             # use thread to send to OCR
-            serializer.validated_data.get('picFile').seek(0)
-            pool = ThreadPool(processes=1)
-            async_result = pool.apply_async(sendtoS3, args = (superMarket, img))
+            # img.seek(0, os.SEEK_SET)
+            url = sendtoS3(superMarket, img)
+            img.seek(0, os.SEEK_SET)
+            # pool = ThreadPool(processes=1)
+            # async_result = pool.apply_async(sendtoS3, args = (superMarket, img))
 
             # response = requests.post(OCR_HOST, data=[('key', OCR_KEY), ('superMarket', superMarket)], files=files)
             # use thread to upload image to S3
@@ -112,12 +114,9 @@ class receiptCreateView(generics.CreateAPIView):
             # bucket.put_object(ACL='public-read',Body=img)
             # bucket.upload_fileobj(img, s3_filename, ExtraArgs={'ACL':'public-read','ContentType':'image/jpeg'})
             # bucket_location = s3.get_bucket_location(Bucket=BUCKET_NAME)
-            # url = "https://s3-{0}.amazonaws.com/{1}/{2}".format(
-            #     bucket_location['LocationConstraint'],
-            #     BUCKET_NAME,
-            #     s3_filename)
-            processedResult = sendtoOCR(serializer.validated_data)
-            url = async_result.get()
+            processedResult = sendtoOCR(serializer.validated_data.get('superMarket'), img)
+
+            # url = async_result.get()
             if(len(processedResult.content)==0):
                 processedResult_json = {}
             else:
@@ -141,7 +140,7 @@ class receiptCreateView(generics.CreateAPIView):
             #                 temp_diff = diff
             #                 corrected_name = prod[0]
             #         logger.debug('{0},{1},{2}'.format(name, corrected_name, temp_diff))
-
+            img.close()
             result = {
                 "pic_url":url,
                 "result":processedResult_json
@@ -176,19 +175,19 @@ class processedReceiptCreateView(generics.ListCreateAPIView):
 @permission_classes([AllowAny])
 def ocr_proxy(request):
 
-    image_file = open("test_img2.jpg", "rb")
-    # with open("test_img1.jpg", "rb") as image_file:
-    encoded_img = base64.b64encode(image_file.read())
-    encoded_file = b'data:image/jpg;base64,'+encoded_img
-    # print("[DEBUG: {0}]".format(encoded_file))
-    img = (image_file.name,image_file,'image/jpeg')
-    key = (None, OCR_KEY)
-    superMarket = (None, 'Kaufland')
+    # image_file = open("test_img2.jpg", "rb")
+    # # with open("test_img1.jpg", "rb") as image_file:
+    # encoded_img = base64.b64encode(image_file.read())
+    # encoded_file = b'data:image/jpg;base64,'+encoded_img
+    # # print("[DEBUG: {0}]".format(encoded_file))
+    # img = (image_file.name,image_file,'image/jpeg')
+    # key = (None, OCR_KEY)
+    # superMarket = (None, 'Kaufland')
 
     # payload = {'key': key,'superMarket':'Kaufland'}
     # response = requests.post(OCR_HOST, files={'key': key, 'superMarket': superMarket,'picFile':img} )
     # response = requests.post("https://www.google.nl/")
-    with open('test_img2.jpg', 'rb') as f:
+    with open('test.jpg', 'rb') as f:
         img = (f.name, f, 'image/jpeg')
         files = {'picFile':img}
         response = requests.post(OCR_HOST, data=[('key',OCR_KEY),('superMarket','Kaufland')],files=files)
