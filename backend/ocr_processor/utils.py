@@ -72,3 +72,4 @@ def ocr_space_url(url, overlay=False, api_key='cfe3addbc288957', language='ger')
                       data=payload,
                       )
     return r.content.decode()
+

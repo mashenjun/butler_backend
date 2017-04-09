@@ -1,4 +1,4 @@
-import requests,base64,uuid,os
+import requests,base64,uuid,os,time
 from multiprocessing.pool import ThreadPool
 
 
@@ -54,6 +54,7 @@ import Levenshtein
 # Create your views here.
 logger = createLogger(__name__);
 
+
 def sendtoOCR(superMarket,img):
     # the data is just a response data
     superMarket = superMarket
@@ -63,6 +64,7 @@ def sendtoOCR(superMarket,img):
     files = {'picFile': picFile}
     response = requests.post(OCR_HOST, data=[('key', OCR_KEY), ('superMarket', superMarket)], files=files)
     return response
+
 
 def sendtoS3(supermarket,img):
     superMarket = supermarket
@@ -102,7 +104,11 @@ class receiptCreateView(generics.CreateAPIView):
             # files = {'picFile': picFile}
             # use thread to send to OCR
             # img.seek(0, os.SEEK_SET)
+            start = time.time()
             url = sendtoS3(superMarket, img)
+            end = time.time()
+            elapsed = end - start
+            print(elapsed)
             img.seek(0, os.SEEK_SET)
             # pool = ThreadPool(processes=1)
             # async_result = pool.apply_async(sendtoS3, args = (superMarket, img))
@@ -114,8 +120,11 @@ class receiptCreateView(generics.CreateAPIView):
             # bucket.put_object(ACL='public-read',Body=img)
             # bucket.upload_fileobj(img, s3_filename, ExtraArgs={'ACL':'public-read','ContentType':'image/jpeg'})
             # bucket_location = s3.get_bucket_location(Bucket=BUCKET_NAME)
+            start = time.time()
             processedResult = sendtoOCR(serializer.validated_data.get('superMarket'), img)
-
+            end = time.time()
+            elapsed = end - start
+            print(elapsed)
             # url = async_result.get()
             if(len(processedResult.content)==0):
                 processedResult_json = {}
@@ -141,6 +150,7 @@ class receiptCreateView(generics.CreateAPIView):
             #                 corrected_name = prod[0]
             #         logger.debug('{0},{1},{2}'.format(name, corrected_name, temp_diff))
             img.close()
+
             result = {
                 "pic_url":url,
                 "result":processedResult_json
