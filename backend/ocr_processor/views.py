@@ -68,7 +68,8 @@ def sendtoOCR(superMarket,img):
 
 def sendtoS3(supermarket,img):
     superMarket = supermarket
-    s3 = boto3.client('s3', config=Config(signature_version='s3v4'))
+    # s3 = boto3.client('s3', config=Config(signature_version='s3v4'))
+    s3 = boto3.client('s3')
     s3_filename = os.path.join(superMarket, '{}_{}.{}'.format(uuid.uuid4().hex, '0', 'jpg'))
     # s3.upload_fileobj(img, BUCKET_NAME, s3_filename,
     #                   ExtraArgs={'ACL': 'public-read', 'ContentType': 'image/jpeg'})
@@ -130,26 +131,32 @@ class receiptCreateView(generics.CreateAPIView):
                 processedResult_json = {}
             else:
                 processedResult_json = processedResult.json()
+
+            img.close()
             # TODO do correction
 
-            # with connection.cursor() as cursor:
-            #     cursor.execute("SELECT production FROM production WHERE store = %s", [superMarket])
-            #     rows = cursor.fetchall()
-            #
-            #     for item in processedResult_json.get('items'):
-            #         name = item.get('name')
-            #         corrected_name = name
-            #         temp_diff = 0.0
-            #         # logger.debug(name)
-            #         # diff_list = [Levenshtein.ratio(name.lower(),k[0].lower()) for k in rows]
-            #         # logger.debug(min(diff_list))
-            #         for prod in rows :
-            #             diff = Levenshtein.ratio(name.lower(),prod[0].lower())
-            #             if (diff>temp_diff):
-            #                 temp_diff = diff
-            #                 corrected_name = prod[0]
-            #         logger.debug('{0},{1},{2}'.format(name, corrected_name, temp_diff))
-            img.close()
+            with connection.cursor() as cursor:
+                # cursor.execute("SELECT production FROM production WHERE store = %s", [superMarket])
+                try:
+                    query = "SELECT name FROM {0}".format(superMarket)
+                    cursor.execute(query)
+                    rows = cursor.fetchall()
+                    for item in processedResult_json.get('items'):
+                        name = item.get('name')
+                        corrected_name = name
+                        temp_diff = 0.0
+                        # logger.debug(name)
+                        # diff_list = [Levenshtein.ratio(name.lower(),k[0].lower()) for k in rows]
+                        # logger.debug(min(diff_list))
+                        for prod in rows :
+                            diff = Levenshtein.ratio(name.lower(),prod[0].lower())
+                            if (diff>temp_diff):
+                                temp_diff = diff
+                                corrected_name = prod[0]
+                        # logger.debug('{0},{1},{2}'.format(name, corrected_name, temp_diff))
+                        item['name'] = corrected_name
+                except:
+                    pass
 
             result = {
                 "pic_url":url,

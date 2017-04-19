@@ -52,3 +52,5 @@ config.py
 dump/
 *.csv
 *.jpg
+*.xlsx
+
